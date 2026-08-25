@@ -1,3 +1,6 @@
+For testing purpose because of a bug with FireTV Stick 4K + XBox One Controller in the Emulators.
+It doesn't recognize the Start or Select Button at the Controller and jumps instantly into the options menu of the emulator.
+
 <h1 align="center">Moonfin</h1>
 <h3 align="center">Premium Jellyfin & Emby client for mobile, tablet, desktop, TV, and web</h3>
 
