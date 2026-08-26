@@ -182,7 +182,7 @@ internal class NativePadInput(
     /** Returns true when this key was consumed by the native pad path. */
     fun onKey(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
-        if (keyCode == KeyEvent.KEYCODE_BACK || isVolumeKey(keyCode)) return false
+        if (isVolumeKey(keyCode)) return false
         // Repeats carry no new information: the level is already latched from
         // the initial DOWN and stays latched until UP. Consume and drop them.
         if (event.repeatCount != 0) return true
@@ -196,6 +196,31 @@ internal class NativePadInput(
             return true
         }
 
+        val fromGamepad = (event.source
+            and (InputDevice.SOURCE_JOYSTICK or InputDevice.SOURCE_GAMEPAD)) != 0
+
+        // On Fire OS the Xbox Start button arrives as KEYCODE_MENU (or
+        // KEYCODE_BUTTON_MODE) from a gamepad source. Route it through the hold
+        // gesture so a quick tap reaches the game as RetroPad Start while a
+        // hold still opens the overlay. TV-remote MENU (non-gamepad) keeps
+        // opening the menu immediately below.
+        if (fromGamepad && (keyCode == KeyEvent.KEYCODE_MENU
+                || keyCode == KeyEvent.KEYCODE_BUTTON_MODE
+                || keyCode == KeyEvent.KEYCODE_BUTTON_START)) {
+            handleStart(event.action == KeyEvent.ACTION_DOWN)
+            return true
+        }
+
+        // Gamepad-source Back is the Xbox "View/Select" button, not system
+        // navigation; send it as RetroPad Select so in-game Select works.
+        if (fromGamepad && keyCode == KeyEvent.KEYCODE_BACK) {
+            val bit = 1 shl RETRO_SELECT
+            if (event.action == KeyEvent.ACTION_DOWN) keyMask = keyMask or bit
+            else keyMask = keyMask and bit.inv()
+            publishMask()
+            return true
+        }
+        
         // Escape joins Menu here rather than being handled up in Flutter. A USB
         // or Bluetooth keyboard is a real Android TV accessory, and Escape is
         // the obvious "let me out" key on one, but it is not a game key -- so
@@ -211,6 +236,8 @@ internal class NativePadInput(
             if (event.action == KeyEvent.ACTION_DOWN) bridge.onMenu()
             return true
         }
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) return false
 
         if (keyCode == KeyEvent.KEYCODE_BUTTON_START) {
             handleStart(event.action == KeyEvent.ACTION_DOWN)
